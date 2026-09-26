@@ -1,0 +1,89 @@
+name: factory_health_ontology
+description: "A unified ontology mapping high-frequency physical machine telemetry to low-frequency ERP batch schedules to identify product-driven equipment degradation."
+
+tables:
+  - name: IT_OT_CONVERGED
+    description: "The core time-series table containing both mechanical sensor readings and the active SKU production block."
+    base_table:
+      database: OEE_COMMAND_CENTER
+      schema: FACTORY_FLOOR
+      table: IT_OT_CONVERGED
+
+    dimensions:
+      - name: equipment_id
+        description: "The physical asset identifier (e.g., LINE-2-PACKAGING)."
+        expr: EQUIPMENT_ID
+        data_type: TEXT
+        unique: false
+        
+      - name: sku_id
+        description: "The business product identifier currently being manufactured. 'NONE' indicates idle or changeover time."
+        expr: SKU_ID
+        data_type: TEXT
+        unique: false
+        
+      - name: batch_id
+        description: "The unique ERP production run identifier."
+        expr: BATCH_ID
+        data_type: TEXT
+        unique: false
+
+    time_dimensions:
+      - name: timestamp
+        description: "The exact moment the physical telemetry was recorded."
+        expr: TIMESTAMP
+        data_type: TIMESTAMP
+        unique: false
+
+    measures:
+      - name: temperature_c
+        description: "The operating temperature of the equipment in Celsius. Baseline is 75C. Values above 85C indicate severe thermal stress."
+        expr: TEMPERATURE_C
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: vibration_rms
+        description: "The vibration footprint in RMS. Baseline is 2.0. Values above 2.3 indicate mechanical instability."
+        expr: VIBRATION_RMS
+        data_type: NUMBER
+        default_aggregation: avg
+
+      - name: cumulative_stress_score
+        description: "A rolling metric measuring the accumulated thermal and mechanical fatigue over a 24-hour window, heavily weighted by high-stress SKUs."
+        expr: CUMULATIVE_STRESS_SCORE
+        data_type: NUMBER
+        default_aggregation: max
+
+      - name: predicted_rul_hours
+        description: "The estimated Remaining Useful Life (RUL) of the equipment in hours before maintenance intervention is required."
+        expr: PREDICTED_RUL_HOURS
+        data_type: NUMBER
+        default_aggregation: avg
+  
+  - name: ASSET_RUL_PREDICTIONS
+    description: "Predictive model output forecasting the Remaining Useful Life (RUL) and exact failure timestamp of factory equipment."
+    base_table:
+      database: OEE_COMMAND_CENTER
+      schema: FACTORY_FLOOR
+      table: ASSET_RUL_PREDICTIONS
+
+    dimensions:
+      - name: equipment_id
+        description: "The physical asset identifier."
+        expr: EQUIPMENT_ID
+        data_type: TEXT
+        unique: true
+
+    time_dimensions:
+      - name: predicted_failure_timestamp
+        description: "The forecasted exact date and time the asset will breach critical thermal failure limits."
+        expr: PREDICTED_FAILURE_TIMESTAMP
+        data_type: TIMESTAMP
+        unique: false
+
+    measures:
+      - name: rul_hours
+        description: "The Remaining Useful Life (RUL) in hours until the machine fails. Lower numbers indicate imminent failure."
+        expr: RUL_HOURS
+        data_type: NUMBER
+        default_aggregation: min

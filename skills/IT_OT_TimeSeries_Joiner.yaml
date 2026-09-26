@@ -1,0 +1,22 @@
+name: IT-OT-TimeSeries-Joiner
+description: "Executes a time-series boundary join across disparate frequency datasets, mapping high-velocity OT sensor timestamps inside the Start/End duration blocks of low-velocity IT enterprise records."
+version: "1.0"
+type: sql
+parameters:
+  ot_table:
+    type: string
+    description: "The high-frequency sensor telemetry table."
+  it_table:
+    type: string
+    description: "The low-frequency batch schedule table."
+  join_key:
+    type: string
+    description: "The shared asset identifier (e.g., EQUIPMENT_ID)."
+sql: |
+  SELECT
+      ot.*,
+      it.*
+  FROM {{ot_table}} ot
+  LEFT JOIN {{it_table}} it
+      ON ot.{{join_key}} = it.{{join_key}}
+      AND ot.TIMESTAMP BETWEEN it.START_TIME AND it.END_TIME;
